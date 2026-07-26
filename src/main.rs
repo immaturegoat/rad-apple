@@ -14,9 +14,11 @@ use std::time::Duration;
 
 fn main() -> std::io::Result<()> {    
 
+    if !Path::new("output_frames").is_dir() {
+        get_frames();
+    }
     let mut frames: Vec<String> = read_files()?;
 
-    frames.sort();
     play_animation(frames)?;
     // println!("{}", frames[0]);
     Ok(())
@@ -51,27 +53,33 @@ fn get_frames() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn read_files() -> std::io::Result<Vec<String>> {
-    let mut files: Vec<String> = Vec::new();
-    for entry in fs::read_dir("output_frames/")? {
-        let entry = entry?;
-        let path = entry.path();
+    let mut files  = Vec::new();
 
-        let content = fs::read_to_string(path);
+    for file in fs::read_dir("output_frames/").unwrap() {
+        files.push(file.unwrap().path().display().to_string());
+    }
+
+    files.sort();
+
+    let mut frames: Vec<String> = Vec::new();
+    for file in files {
+        let content = fs::read_to_string(file);
         let frame = match content {
             Ok(val) => val,
             Err(err) => format!("error: {}", err),
         };
 
-        files.push(frame);
+        frames.push(frame);
     }
-    Ok(files)
+    Ok(frames)
 }
 
 fn play_animation(frames: Vec<String>) -> io::Result<()> {
     let frame = 0;
     let mut stdout = stdout();
-    execute!(stdout, Hide, Clear(ClearType::All))?;
+    
     for frame in &frames {
+        execute!(stdout, Hide, Clear(ClearType::All))?;    
         execute!(stdout, MoveTo(0, 0));
         println!("{}", frame);
         thread::sleep(Duration::from_millis(33));
