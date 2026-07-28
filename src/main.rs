@@ -1,26 +1,26 @@
 use cascii::{AsciiConverter, VideoOptions, ConversionOptions};
 use std::path::Path;
 use std::fs::{self, File};
-use std::io::Read;
 use terminal_size::{Width, Height, terminal_size};
 use crossterm::{
     cursor::{Hide, Show, MoveTo},
     execute,
     terminal::{Clear, ClearType},
 };
-use std::io::{self, stdout};
+use std::io::{self, stdout, Write};
 use std::thread;
 use std::time::Duration;
 
 fn main() -> std::io::Result<()> {    
-
     if !Path::new("output_frames").is_dir() {
         get_frames();
+        
     }
-    let mut frames: Vec<String> = read_files()?;
+    let frames: Vec<String> = read_files()?;
 
     play_animation(frames)?;
-    // println!("{}", frames[0]);
+
+    fs::remove_dir_all("output_frames");
     Ok(())
 }
 
@@ -29,8 +29,7 @@ fn get_frames() -> Result<(), Box<dyn std::error::Error>> {
     
     let size = terminal_size();
     let mut width: u32 = 80;
-    let mut height = 0;
-    if let Some((Width(w), Height(h))) = size {
+    if let Some((Width(w), Height(_h))) = size {
         width = u32::from(w);
     } else {
         println!("unable to get terminal size");
@@ -39,7 +38,7 @@ fn get_frames() -> Result<(), Box<dyn std::error::Error>> {
     let video_options = VideoOptions {
         fps: 30,
         start: Some("0".to_string()),
-        end: Some("10".to_string()),
+        end: Some("30".to_string()),
         columns: width,
         extract_audio: false,
         preprocess_filter: None,
@@ -75,13 +74,14 @@ fn read_files() -> std::io::Result<Vec<String>> {
 }
 
 fn play_animation(frames: Vec<String>) -> io::Result<()> {
-    let frame = 0;
     let mut stdout = stdout();
-    
+    let mut lock = stdout.lock();
+
+    execute!(stdout, Hide, Clear(ClearType::All))?;    
     for frame in &frames {
-        execute!(stdout, Hide, Clear(ClearType::All))?;    
         execute!(stdout, MoveTo(0, 0));
-        println!("{}", frame);
+        execute!(stdout, Clear(ClearType::FromCursorDown));
+        writeln!(lock, "{}", frame);
         thread::sleep(Duration::from_millis(33));
     }
 
