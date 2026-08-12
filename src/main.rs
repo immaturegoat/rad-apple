@@ -10,8 +10,10 @@ use crossterm::{
 use std::io::{self, stdout, Write};
 use std::thread;
 use std::time::Duration;
+use std::io::BufReader;
 
 fn main() -> std::io::Result<()> {    
+    fs::remove_dir_all("output_frames");
     if !Path::new("output_frames").is_dir() {
         get_frames();
         
@@ -26,7 +28,17 @@ fn main() -> std::io::Result<()> {
 
 fn get_frames() -> Result<(), Box<dyn std::error::Error>> {
     let converter = AsciiConverter::new();
+    let video_path = "assets/apple.mp4";
     
+    let duration_result= get_video_length(video_path);
+    let seconds = match duration_result {
+        Ok(seconds) => seconds,
+        Err(e) => {
+            println!("can't read video");
+            "0".to_string()
+        }
+    };
+
     let size = terminal_size();
     let mut width: u32 = 80;
     if let Some((Width(w), Height(_h))) = size {
@@ -38,7 +50,7 @@ fn get_frames() -> Result<(), Box<dyn std::error::Error>> {
     let video_options = VideoOptions {
         fps: 30,
         start: Some("0".to_string()),
-        end: Some("30".to_string()),
+        end: Some(seconds),
         columns: width,
         extract_audio: false,
         preprocess_filter: None,
@@ -46,9 +58,19 @@ fn get_frames() -> Result<(), Box<dyn std::error::Error>> {
 
     let conversion_options = ConversionOptions::default().with_font_ratio(0.2).with_luminance(20).with_columns(width);
 
-    converter.convert_video(Path::new("assets/apple.mp4"), Path::new("output_frames"), &video_options, &conversion_options, false)?;
+    converter.convert_video(Path::new(video_path), Path::new("output_frames"), &video_options, &conversion_options, false)?;
 
     Ok(())
+}
+
+fn get_video_length(path: &str) -> Result<String, Box<dyn std::error::Error>>{
+    let file = File::open(path)?;
+    let size = file.metadata()?.len();
+    let reader = BufReader::new(file);
+    let mp4 = mp4::Mp4Reader::read_header(reader, size)?;
+    
+    let duration_secs = mp4.duration().as_secs();
+    Ok(duration_secs.to_string())
 }
 
 fn read_files() -> std::io::Result<Vec<String>> {

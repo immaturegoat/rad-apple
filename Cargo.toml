@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 cascii = "0.32.0"
 crossterm = "0.29.0"
+mp4 = "0.14.0"
 terminal_size = "0.4.4"
